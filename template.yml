@@ -1,0 +1,71 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  fastapi-lambda-template
+
+Globals:
+  Function:
+    Timeout: 28
+
+Parameters:
+  AppEnv:
+    Type: String
+  Stage:
+    Type: String
+  LogLevel:
+    Type: String
+    Default: "DEBUG"
+
+Resources:
+  ApiGateway:
+    Type: AWS::Serverless::Api
+    Properties:
+      Name: fastapi-lambda-template
+      StageName: !Sub ${Stage}
+
+  Api:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: fastapi-template-api
+      CodeUri: ./
+      Handler: src.main.handler
+      Runtime: python3.9
+      MemorySize: 1024
+      Role: !GetAtt ApiRole.Arn
+      Environment:
+        Variables:
+          APP_ENV: !Sub ${AppEnv}
+          LOG_LEVEL: !Sub ${LogLevel}
+      Events:
+        AnyRequest:
+          Type: Api
+          Properties:
+            Path: /{proxy+}
+            Method: ANY
+            RestApiId: !Ref ApiGateway
+
+  ApiRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: "Allow"
+            Action: "sts:AssumeRole"
+            Principal:
+              Service: lambda.amazonaws.com
+      Policies:
+        - PolicyName: "fastapi-lambda-api-policy"
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: "Allow"
+                Action:
+                  - "logs:CreateLogGroup"
+                  - "logs:CreateLogStream"
+                  - "logs:PutLogEvents"
+                Resource: "*"
+#              - Effect: "Allow"
+#                Action:
+#                  - "service:action_name"
+#                Resource: "*"
